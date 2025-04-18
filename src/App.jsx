@@ -1,4 +1,4 @@
-// App.jsx
+// App.jsx - updated with pre-university route
 import React from "react";
 import { ChakraProvider, ColorModeScript } from "@chakra-ui/react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
@@ -9,6 +9,7 @@ import theme from "./theme";
 // Import pages
 import HomePage from "./pages/HomePage";
 import CharacterCreationPage from "./pages/CharacterCreationPage";
+import PreUniversityExamPage from "./pages/PreUniversityExamPage";
 import EducationPage from "./pages/EducationPage";
 import MilitaryServicePage from "./pages/MilitaryServicePage";
 import CareerPage from "./pages/CareerPage";
@@ -29,6 +30,10 @@ function App() {
             <Route
               path="/character-creation"
               element={<CharacterCreationPage />}
+            />
+            <Route
+              path="/pre-university-exam"
+              element={<PreUniversityExamPage />}
             />
             <Route path="/education" element={<EducationPage />} />
             <Route path="/military-service" element={<MilitaryServicePage />} />

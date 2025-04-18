@@ -1,3 +1,4 @@
+// educationStore.js
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -50,6 +51,83 @@ const availableCourses = {
     },
   ],
 };
+
+// Universities available in the game
+const universities = [
+  {
+    id: "ada",
+    name: "ADA University",
+    prestigeRating: 10,
+    description:
+      "A modern university with international standards and English-language instruction.",
+    entranceThreshold: 650,
+    tuition: 7500,
+  },
+  {
+    id: "bsu",
+    name: "Baku State University",
+    prestigeRating: 9,
+    description:
+      "The largest university in Azerbaijan with strong academic traditions and research focus.",
+    entranceThreshold: 600,
+    tuition: 2200,
+  },
+  {
+    id: "asoiu",
+    name: "Azerbaijan State Oil and Industry University",
+    prestigeRating: 8,
+    description:
+      "One of the oldest technical universities in Azerbaijan, focusing on engineering and technology.",
+    entranceThreshold: 550,
+    tuition: 2000,
+  },
+  {
+    id: "beu",
+    name: "Baku Engineering University",
+    prestigeRating: 7,
+    description:
+      "A specialized engineering university with modern facilities and industry connections.",
+    entranceThreshold: 500,
+    tuition: 1900,
+  },
+  {
+    id: "regional",
+    name: "Regional Technical College",
+    prestigeRating: 5,
+    description:
+      "A local college offering basic technical education and IT training.",
+    entranceThreshold: 400,
+    tuition: 1000,
+  },
+];
+
+// Degree programs available in the game
+const degreePrograms = [
+  {
+    id: "cs",
+    name: "Computer Science",
+    description:
+      "Focus on theoretical foundations of computing and practical programming skills.",
+  },
+  {
+    id: "se",
+    name: "Software Engineering",
+    description:
+      "Focus on software development methodologies and large-scale project management.",
+  },
+  {
+    id: "it",
+    name: "Information Technology",
+    description:
+      "Broad training in computer systems, networks, and business applications.",
+  },
+  {
+    id: "is",
+    name: "Information Security",
+    description:
+      "Focus on cybersecurity, cryptography, and secure software development.",
+  },
+];
 
 // Random events that can occur during university
 const educationEvents = [
@@ -191,8 +269,22 @@ const gradePoints = {
 export const useEducationStore = create(
   persist(
     (set, get) => ({
+      // Pre-university examination
+      hasCompletedEntranceExam: false,
+      entranceExamScore: 0,
+      subjectBreakdown: {},
+      preparatoryCourses: [],
+
+      // University selection
+      universityId: null,
+      university: null,
+      degreeProgram: null,
+      specialization: null,
+      isEnrolled: false,
+
       // Current semester (1-8)
-      semester: 1,
+      currentSemester: 1,
+      totalSemesters: 8,
 
       // Selected courses for current semester
       selectedCourses: [],
@@ -221,6 +313,12 @@ export const useEducationStore = create(
         scholarships: [],
         awards: [],
       },
+
+      // Graduation status
+      isGraduated: false,
+      expectedGraduationDate: null,
+      actualGraduationDate: null,
+      finalThesis: null,
 
       // Energy level (0-100)
       energy: 100,
@@ -253,10 +351,57 @@ export const useEducationStore = create(
 
       // Actions
 
+      // Set entrance exam score and mark as completed
+      setEntranceExamScore: (score) =>
+        set({
+          entranceExamScore: score,
+          hasCompletedEntranceExam: true,
+        }),
+
+      // Set subject breakdown from entrance exam
+      setSubjectBreakdown: (breakdown) =>
+        set({
+          subjectBreakdown: breakdown,
+        }),
+
+      // Set selected university
+      setUniversity: (universityId) => {
+        const university = universities.find((u) => u.id === universityId);
+        if (university) {
+          set({
+            universityId,
+            university: university.name,
+            isEnrolled: true,
+          });
+        }
+      },
+
+      // Set degree program
+      setDegreeProgram: (programId) => {
+        const program = degreePrograms.find((p) => p.id === programId);
+        if (program) {
+          set({
+            degreeProgram: program.name,
+          });
+        }
+      },
+
+      // Set specialization within degree program
+      setSpecialization: (specialization) =>
+        set({
+          specialization,
+        }),
+
       // Get available courses for current semester
       getAvailableCourses: () => {
-        const semester = get().semester;
+        const semester = get().currentSemester;
         return availableCourses[semester] || [];
+      },
+
+      // Get available universities based on entrance exam score
+      getAvailableUniversities: () => {
+        const score = get().entranceExamScore;
+        return universities.filter((u) => score >= u.entranceThreshold);
       },
 
       // Select courses for the current semester
@@ -300,7 +445,7 @@ export const useEducationStore = create(
           Object.entries(newCourseGrades).forEach(([id, grade]) => {
             // Find the course to get its credits
             let course;
-            for (let sem = 1; sem <= state.semester; sem++) {
+            for (let sem = 1; sem <= state.currentSemester; sem++) {
               const semCourses = availableCourses[sem] || [];
               const found = semCourses.find((c) => c.id === id);
               if (found) {
@@ -329,7 +474,7 @@ export const useEducationStore = create(
         set((state) => {
           // Store current semester in history
           const semesterRecord = {
-            semester: state.semester,
+            semester: state.currentSemester,
             gpa: state.gpa,
             courses: state.selectedCourses.map((course) => ({
               ...course,
@@ -383,8 +528,18 @@ export const useEducationStore = create(
             activeEvent = educationEvents[randomIndex];
           }
 
+          // Check if graduation conditions are met
+          const newSemester = state.currentSemester + 1;
+          let isGraduated = false;
+          let actualGraduationDate = null;
+
+          if (newSemester > state.totalSemesters) {
+            isGraduated = true;
+            actualGraduationDate = new Date().toISOString();
+          }
+
           return {
-            semester: state.semester + 1,
+            currentSemester: newSemester,
             selectedCourses: [],
             allocatedTime: {
               study: 0,
@@ -398,6 +553,8 @@ export const useEducationStore = create(
             skills: updatedSkills,
             energy: Math.min(state.energy + 20, 100), // Recover some energy between semesters
             activeEvent,
+            isGraduated,
+            actualGraduationDate,
           };
         });
       },
@@ -431,10 +588,32 @@ export const useEducationStore = create(
         });
       },
 
+      // Add preparatory course
+      addPreparatoryCourse: (course) =>
+        set((state) => ({
+          preparatoryCourses: [...state.preparatoryCourses, course],
+        })),
+
+      // Set thesis project
+      setThesis: (thesis) =>
+        set({
+          finalThesis: thesis,
+        }),
+
       // Reset education progress (for testing or new game)
       resetEducation: () => {
         set({
-          semester: 1,
+          hasCompletedEntranceExam: false,
+          entranceExamScore: 0,
+          subjectBreakdown: {},
+          preparatoryCourses: [],
+          universityId: null,
+          university: null,
+          degreeProgram: null,
+          specialization: null,
+          isEnrolled: false,
+          currentSemester: 1,
+          totalSemesters: 8,
           selectedCourses: [],
           courseGrades: {},
           timeUnits: 10,
@@ -451,6 +630,10 @@ export const useEducationStore = create(
             scholarships: [],
             awards: [],
           },
+          isGraduated: false,
+          expectedGraduationDate: null,
+          actualGraduationDate: null,
+          finalThesis: null,
           energy: 100,
           skills: {
             programming: 0,

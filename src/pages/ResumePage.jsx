@@ -1,5 +1,5 @@
 // pages/ResumePage.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Button,
@@ -27,11 +27,10 @@ import {
   List,
   ListItem,
   ListIcon,
-  Image,
-  useToast,
   Select,
   Wrap,
   WrapItem,
+  useToast,
 } from "@chakra-ui/react";
 import {
   FileText,
@@ -41,7 +40,6 @@ import {
   Code,
   Globe,
   Download,
-  Edit,
   ChevronRight,
   CheckCircle,
   Star,
@@ -56,23 +54,25 @@ import { useGameStore } from "../store/gameStore";
 
 const ResumePage = () => {
   const toast = useToast();
+  const initialRenderRef = useRef(true);
 
-  // Resume state
-  const resume = useResumeStore((state) => ({
-    personalInfo: state.personalInfo,
-    objective: state.objective,
-    education: state.education,
-    skills: state.skills,
-    workExperience: state.workExperience,
-    projects: state.projects,
-    additional: state.additional,
-    sectionStrengths: state.sectionStrengths,
-    qualityScore: state.qualityScore,
-    qualityLevel: state.qualityLevel,
-    activeTemplate: state.activeTemplate,
-    unlockedTemplates: state.unlockedTemplates,
-    lastUpdated: state.lastUpdated,
-  }));
+  // Local state
+  const [activeView, setActiveView] = useState("basic"); // 'basic', 'detailed', 'analysis'
+
+  // Resume state - use selective state picking
+  const personalInfo = useResumeStore((state) => state.personalInfo);
+  const objective = useResumeStore((state) => state.objective);
+  const education = useResumeStore((state) => state.education);
+  const skills = useResumeStore((state) => state.skills);
+  const workExperience = useResumeStore((state) => state.workExperience);
+  const projects = useResumeStore((state) => state.projects);
+  const additional = useResumeStore((state) => state.additional);
+  const sectionStrengths = useResumeStore((state) => state.sectionStrengths);
+  const qualityScore = useResumeStore((state) => state.qualityScore);
+  const qualityLevel = useResumeStore((state) => state.qualityLevel);
+  const activeTemplate = useResumeStore((state) => state.activeTemplate);
+  const unlockedTemplates = useResumeStore((state) => state.unlockedTemplates);
+  const lastUpdated = useResumeStore((state) => state.lastUpdated);
 
   // Resume actions
   const syncFromCharacter = useResumeStore((state) => state.syncFromCharacter);
@@ -83,36 +83,27 @@ const ResumePage = () => {
   );
   const setTemplate = useResumeStore((state) => state.setTemplate);
 
-  // Character state
-  const character = useCharacterStore((state) => ({
-    name: state.name,
-    gender: state.gender,
-    attributes: state.attributes,
-    skills: state.skills,
-  }));
+  // Character state - use selective state picking
+  const characterName = useCharacterStore((state) => state.name);
+  const characterGender = useCharacterStore((state) => state.gender);
+  const characterAttributes = useCharacterStore((state) => state.attributes);
+  const characterSkills = useCharacterStore((state) => state.skills);
 
-  // Education state
-  const education = useEducationStore((state) => ({
-    university: state.university,
-    degreeProgram: state.degreeProgram,
-    specialization: state.specialization,
-    gpa: state.gpa,
-    isGraduated: state.isGraduated,
-  }));
+  // Education state - use selective state picking
+  const university = useEducationStore((state) => state.university);
+  const degreeProgram = useEducationStore((state) => state.degreeProgram);
+  const specialization = useEducationStore((state) => state.specialization);
+  const educationGpa = useEducationStore((state) => state.gpa);
+  const isGraduated = useEducationStore((state) => state.isGraduated);
 
-  // Career state
-  const career = useCareerStore((state) => ({
-    workExperiences: state.workExperiences,
-    currentJob: state.currentJob,
-    internships: state.internships,
-    militaryService: state.militaryService,
-  }));
+  // Career state - use selective state picking
+  const workExperiences = useCareerStore((state) => state.workExperiences);
+  const currentJob = useCareerStore((state) => state.currentJob);
+  const internships = useCareerStore((state) => state.internships);
+  const militaryService = useCareerStore((state) => state.militaryService);
 
   // Game state
   const syncResume = useGameStore((state) => state.syncResume);
-
-  // Local state
-  const [activeView, setActiveView] = useState("basic"); // 'basic', 'detailed', 'analysis'
 
   // Colors
   const cardBg = useColorModeValue("white", "gray.700");
@@ -130,23 +121,61 @@ const ResumePage = () => {
     }).format(date);
   };
 
+  // Sync resume data from all sources - only on initial render
+  useEffect(() => {
+    if (initialRenderRef.current) {
+      initialRenderRef.current = false;
+      refreshResume();
+    }
+  }, []);
+
+  // Assemble character data
+  const getCharacterData = () => ({
+    name: characterName,
+    gender: characterGender,
+    attributes: characterAttributes,
+    skills: characterSkills,
+  });
+
+  // Assemble education data
+  const getEducationData = () => ({
+    university,
+    degreeProgram,
+    specialization,
+    gpa: educationGpa,
+    isGraduated,
+  });
+
+  // Assemble career data
+  const getCareerData = () => ({
+    workExperiences,
+    currentJob,
+    internships,
+    militaryService,
+  });
+
   // Sync resume data from all sources
   const refreshResume = () => {
+    // Get fresh data from stores
+    const characterData = getCharacterData();
+    const educationData = getEducationData();
+    const careerData = getCareerData();
+
     // Sync with character store
-    syncFromCharacter(character);
+    syncFromCharacter(characterData);
 
     // Sync with education store if applicable
-    if (education.university) {
-      syncFromEducation(education);
+    if (educationData.university) {
+      syncFromEducation(educationData);
     }
 
     // Sync with career store if applicable
     if (
-      career.workExperiences.length > 0 ||
-      career.currentJob ||
-      career.internships.length > 0
+      careerData.workExperiences.length > 0 ||
+      careerData.currentJob ||
+      careerData.internships.length > 0
     ) {
-      syncFromCareer(career);
+      syncFromCareer(careerData);
     }
 
     // Calculate overall quality
@@ -184,11 +213,6 @@ const ResumePage = () => {
     if (strength >= 3) return "orange";
     return "red";
   };
-
-  // Initial sync when component mounts
-  useEffect(() => {
-    refreshResume();
-  }, []);
 
   return (
     <Box mb={8}>
@@ -230,13 +254,12 @@ const ResumePage = () => {
           <HStack justifyContent="space-between">
             <Heading size="md">Resume Quality</Heading>
             <Badge
-              colorScheme={getQualityLevelColor(resume.qualityLevel)}
+              colorScheme={getQualityLevelColor(qualityLevel)}
               fontSize="md"
               px={2}
               py={1}
             >
-              {resume.qualityLevel.charAt(0).toUpperCase() +
-                resume.qualityLevel.slice(1)}{" "}
+              {qualityLevel.charAt(0).toUpperCase() + qualityLevel.slice(1)}{" "}
               Level
             </Badge>
           </HStack>
@@ -246,13 +269,11 @@ const ResumePage = () => {
             <Box>
               <HStack justify="space-between" mb={1}>
                 <Text fontWeight="bold">Overall Quality</Text>
-                <Text fontWeight="bold">
-                  {resume.qualityScore.toFixed(1)}/10
-                </Text>
+                <Text fontWeight="bold">{qualityScore.toFixed(1)}/10</Text>
               </HStack>
               <Progress
-                value={resume.qualityScore * 10}
-                colorScheme={getQualityLevelColor(resume.qualityLevel)}
+                value={qualityScore * 10}
+                colorScheme={getQualityLevelColor(qualityLevel)}
                 height="10px"
                 borderRadius="full"
               />
@@ -266,29 +287,27 @@ const ResumePage = () => {
               }}
               gap={4}
             >
-              {Object.entries(resume.sectionStrengths).map(
-                ([section, strength]) => (
-                  <GridItem key={section}>
-                    <VStack align="start" spacing={1}>
-                      <HStack justify="space-between" width="100%">
-                        <Text fontSize="sm" fontWeight="bold">
-                          {section.charAt(0).toUpperCase() + section.slice(1)}
-                        </Text>
-                        <Text fontSize="sm" fontWeight="bold">
-                          {strength}/10
-                        </Text>
-                      </HStack>
-                      <Progress
-                        value={strength * 10}
-                        colorScheme={getSectionStrengthColor(strength)}
-                        height="6px"
-                        width="100%"
-                        borderRadius="full"
-                      />
-                    </VStack>
-                  </GridItem>
-                )
-              )}
+              {Object.entries(sectionStrengths).map(([section, strength]) => (
+                <GridItem key={section}>
+                  <VStack align="start" spacing={1}>
+                    <HStack justify="space-between" width="100%">
+                      <Text fontSize="sm" fontWeight="bold">
+                        {section.charAt(0).toUpperCase() + section.slice(1)}
+                      </Text>
+                      <Text fontSize="sm" fontWeight="bold">
+                        {strength}/10
+                      </Text>
+                    </HStack>
+                    <Progress
+                      value={strength * 10}
+                      colorScheme={getSectionStrengthColor(strength)}
+                      height="6px"
+                      width="100%"
+                      borderRadius="full"
+                    />
+                  </VStack>
+                </GridItem>
+              ))}
             </Grid>
 
             <Divider />
@@ -298,12 +317,12 @@ const ResumePage = () => {
                 Template:
               </Text>
               <Select
-                value={resume.activeTemplate}
+                value={activeTemplate}
                 onChange={(e) => setTemplate(e.target.value)}
                 width="auto"
                 size="sm"
               >
-                {resume.unlockedTemplates.map((template) => (
+                {unlockedTemplates.map((template) => (
                   <option key={template} value={template}>
                     {template.charAt(0).toUpperCase() + template.slice(1)}{" "}
                     Template
@@ -312,9 +331,9 @@ const ResumePage = () => {
               </Select>
 
               <Text fontSize="sm" color="gray.500" ml={4}>
-                {resume.unlockedTemplates.length < 4 &&
+                {unlockedTemplates.length < 4 &&
                   `${
-                    4 - resume.unlockedTemplates.length
+                    4 - unlockedTemplates.length
                   } more templates unlock with higher quality`}
               </Text>
             </HStack>
@@ -342,9 +361,7 @@ const ResumePage = () => {
         <Card bg={resumeBg} shadow="md" p={6} borderWidth="1px">
           {/* Header */}
           <VStack spacing={2} align="center" mb={6}>
-            <Heading size="xl">
-              {resume.personalInfo.name || character.name}
-            </Heading>
+            <Heading size="xl">{personalInfo.name || characterName}</Heading>
 
             <HStack
               spacing={6}
@@ -353,32 +370,24 @@ const ResumePage = () => {
               wrap="wrap"
               justify="center"
             >
-              {resume.personalInfo.email && (
-                <Text>{resume.personalInfo.email}</Text>
-              )}
+              {personalInfo.email && <Text>{personalInfo.email}</Text>}
 
-              {resume.personalInfo.phone && (
-                <Text>{resume.personalInfo.phone}</Text>
-              )}
+              {personalInfo.phone && <Text>{personalInfo.phone}</Text>}
 
-              {resume.personalInfo.linkedIn && (
-                <Text>{resume.personalInfo.linkedIn}</Text>
-              )}
+              {personalInfo.linkedIn && <Text>{personalInfo.linkedIn}</Text>}
 
-              {resume.personalInfo.github && (
-                <Text>{resume.personalInfo.github}</Text>
-              )}
+              {personalInfo.github && <Text>{personalInfo.github}</Text>}
             </HStack>
           </VStack>
 
           {/* Objective */}
-          {resume.objective && (
+          {objective && (
             <Box mb={6}>
               <Heading size="md" color={accentColor} mb={2}>
                 Career Objective
               </Heading>
               <Divider mb={2} />
-              <Text>{resume.objective}</Text>
+              <Text>{objective}</Text>
             </Box>
           )}
 
@@ -389,37 +398,37 @@ const ResumePage = () => {
             </Heading>
             <Divider mb={3} />
 
-            {resume.education.university.institution ? (
+            {education.university.institution ? (
               <VStack align="start" spacing={1} mb={4}>
                 <HStack justify="space-between" width="100%">
                   <Heading size="sm">
-                    {resume.education.university.institution}
+                    {education.university.institution}
                   </Heading>
                   <Text fontSize="sm">
-                    {formatDate(resume.education.university.graduationDate)}
+                    {formatDate(education.university.graduationDate)}
                   </Text>
                 </HStack>
                 <Text>
-                  {resume.education.university.degree} in{" "}
-                  {resume.education.university.specialization}
+                  {education.university.degree} in{" "}
+                  {education.university.specialization}
                 </Text>
                 <Text fontSize="sm">
-                  GPA: {resume.education.university.gpa.toFixed(2)}
+                  GPA: {education.university.gpa.toFixed(2)}
                 </Text>
 
-                {resume.education.university.deansList && (
+                {education.university.deansList && (
                   <HStack>
                     <Icon as={Award} color="yellow.500" boxSize={4} />
                     <Text fontSize="sm">Dean's List</Text>
                   </HStack>
                 )}
 
-                {resume.education.university.thesis && (
+                {education.university.thesis && (
                   <Text fontSize="sm">
                     <Text as="span" fontWeight="bold">
                       Thesis:
                     </Text>{" "}
-                    {resume.education.university.thesis.title}
+                    {education.university.thesis.title}
                   </Text>
                 )}
               </VStack>
@@ -428,13 +437,13 @@ const ResumePage = () => {
             )}
 
             {/* Certifications */}
-            {resume.education.additionalEducation.certifications.length > 0 && (
+            {education.additionalEducation.certifications.length > 0 && (
               <Box mt={4}>
                 <Heading size="sm" mb={2}>
                   Certifications
                 </Heading>
                 <List spacing={1}>
-                  {resume.education.additionalEducation.certifications.map(
+                  {education.additionalEducation.certifications.map(
                     (cert, index) => (
                       <ListItem key={index} fontSize="sm">
                         <ListIcon as={CheckCircle} color="green.500" />
@@ -463,17 +472,15 @@ const ResumePage = () => {
                 <Heading size="sm" mb={2}>
                   Technical Skills
                 </Heading>
-                {Object.keys(resume.skills.technical).length > 0 ? (
+                {Object.keys(skills.technical).length > 0 ? (
                   <Wrap spacing={2}>
-                    {Object.entries(resume.skills.technical).map(
-                      ([skill, level]) => (
-                        <WrapItem key={skill}>
-                          <Badge colorScheme="blue" p={1}>
-                            {skill}: {level}
-                          </Badge>
-                        </WrapItem>
-                      )
-                    )}
+                    {Object.entries(skills.technical).map(([skill, level]) => (
+                      <WrapItem key={skill}>
+                        <Badge colorScheme="blue" p={1}>
+                          {skill}: {level}
+                        </Badge>
+                      </WrapItem>
+                    ))}
                   </Wrap>
                 ) : (
                   <Text fontStyle="italic">No technical skills listed</Text>
@@ -485,9 +492,9 @@ const ResumePage = () => {
                 <Heading size="sm" mb={2}>
                   Languages
                 </Heading>
-                {Object.keys(resume.skills.languages).length > 0 ? (
+                {Object.keys(skills.languages).length > 0 ? (
                   <Wrap spacing={2}>
-                    {Object.entries(resume.skills.languages).map(
+                    {Object.entries(skills.languages).map(
                       ([language, level]) => (
                         <WrapItem key={language}>
                           <Badge colorScheme="purple" p={1}>
@@ -506,13 +513,13 @@ const ResumePage = () => {
             </Grid>
 
             {/* Soft Skills */}
-            {resume.skills.softSkills.length > 0 && (
+            {skills.softSkills.length > 0 && (
               <Box mt={4}>
                 <Heading size="sm" mb={2}>
                   Soft Skills
                 </Heading>
                 <Wrap spacing={2}>
-                  {resume.skills.softSkills.map((skill, index) => (
+                  {skills.softSkills.map((skill, index) => (
                     <WrapItem key={index}>
                       <Badge colorScheme="green" p={1}>
                         {skill.charAt(0).toUpperCase() + skill.slice(1)}
@@ -531,9 +538,9 @@ const ResumePage = () => {
             </Heading>
             <Divider mb={3} />
 
-            {resume.workExperience.professionalHistory.length > 0 ? (
+            {workExperience.professionalHistory.length > 0 ? (
               <VStack align="start" spacing={4} mb={4}>
-                {resume.workExperience.professionalHistory.map((job, index) => (
+                {workExperience.professionalHistory.map((job, index) => (
                   <Box key={index} width="100%">
                     <HStack justify="space-between" width="100%">
                       <Heading size="sm">{job.position}</Heading>
@@ -562,57 +569,52 @@ const ResumePage = () => {
             )}
 
             {/* Internships */}
-            {resume.workExperience.internships.length > 0 && (
+            {workExperience.internships.length > 0 && (
               <Box mt={4}>
                 <Heading size="sm" mb={2}>
                   Internships
                 </Heading>
                 <VStack align="start" spacing={2}>
-                  {resume.workExperience.internships.map(
-                    (internship, index) => (
-                      <Box key={index} width="100%">
-                        <HStack justify="space-between" width="100%">
-                          <Text fontWeight="bold">
-                            {internship.position} at {internship.company}
-                          </Text>
-                          <Text fontSize="sm">
-                            {formatDate(internship.startDate)} -{" "}
-                            {formatDate(internship.endDate)}
-                          </Text>
-                        </HStack>
-                      </Box>
-                    )
-                  )}
+                  {workExperience.internships.map((internship, index) => (
+                    <Box key={index} width="100%">
+                      <HStack justify="space-between" width="100%">
+                        <Text fontWeight="bold">
+                          {internship.position} at {internship.company}
+                        </Text>
+                        <Text fontSize="sm">
+                          {formatDate(internship.startDate)} -{" "}
+                          {formatDate(internship.endDate)}
+                        </Text>
+                      </HStack>
+                    </Box>
+                  ))}
                 </VStack>
               </Box>
             )}
 
             {/* Military Service */}
-            {resume.workExperience.militaryService &&
-              resume.workExperience.militaryService.completed && (
+            {workExperience.militaryService &&
+              workExperience.militaryService.completed && (
                 <Box mt={4} p={3} bg={sectionBg} borderRadius="md">
                   <HStack mb={1}>
                     <Icon as={Award} color="green.500" boxSize={5} />
                     <Heading size="sm">Military Service</Heading>
                   </HStack>
                   <Text fontSize="sm">
-                    {resume.workExperience.militaryService.branch},{" "}
-                    {resume.workExperience.militaryService.rank}
+                    {workExperience.militaryService.branch},{" "}
+                    {workExperience.militaryService.rank}
                   </Text>
                   <Text fontSize="sm">
-                    {formatDate(
-                      resume.workExperience.militaryService.startDate
-                    )}{" "}
-                    -{" "}
-                    {formatDate(resume.workExperience.militaryService.endDate)}
+                    {formatDate(workExperience.militaryService.startDate)} -{" "}
+                    {formatDate(workExperience.militaryService.endDate)}
                   </Text>
 
-                  {resume.workExperience.militaryService.technicalRole && (
+                  {workExperience.militaryService.technicalRole && (
                     <Text fontSize="sm" mt={1}>
                       <Text as="span" fontWeight="bold">
                         Technical Role:
                       </Text>{" "}
-                      {resume.workExperience.militaryService.technicalRole}
+                      {workExperience.militaryService.technicalRole}
                     </Text>
                   )}
                 </Box>
@@ -620,9 +622,9 @@ const ResumePage = () => {
           </Box>
 
           {/* Projects */}
-          {(resume.projects.personal.length > 0 ||
-            resume.projects.team.length > 0 ||
-            resume.projects.hackathons.length > 0) && (
+          {(projects.personal.length > 0 ||
+            projects.team.length > 0 ||
+            projects.hackathons.length > 0) && (
             <Box mb={6}>
               <Heading size="md" color={accentColor} mb={2}>
                 Projects
@@ -633,7 +635,7 @@ const ResumePage = () => {
                 templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }}
                 gap={4}
               >
-                {resume.projects.personal.slice(0, 2).map((project, index) => (
+                {projects.personal.slice(0, 2).map((project, index) => (
                   <GridItem key={index}>
                     <Card variant="outline" size="sm">
                       <CardBody>
@@ -664,8 +666,7 @@ const ResumePage = () => {
 
           {/* Last Updated */}
           <Text fontSize="xs" textAlign="right" mt={8} color="gray.500">
-            Last Updated:{" "}
-            {resume.lastUpdated ? formatDate(resume.lastUpdated) : "Never"}
+            Last Updated: {lastUpdated ? formatDate(lastUpdated) : "Never"}
           </Text>
         </Card>
       )}
@@ -715,45 +716,42 @@ const ResumePage = () => {
                 templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }}
                 gap={6}
               >
-                {Object.entries(resume.sectionStrengths).map(
-                  ([section, strength]) => (
-                    <GridItem key={section}>
-                      <Card variant="outline" size="sm">
-                        <CardBody>
-                          <HStack justifyContent="space-between" mb={2}>
-                            <Heading size="sm">
-                              {section.charAt(0).toUpperCase() +
-                                section.slice(1)}
-                            </Heading>
-                            <Badge
-                              colorScheme={getSectionStrengthColor(strength)}
-                              fontSize="md"
-                            >
-                              {strength}/10
-                            </Badge>
-                          </HStack>
-                          <Progress
-                            value={strength * 10}
+                {Object.entries(sectionStrengths).map(([section, strength]) => (
+                  <GridItem key={section}>
+                    <Card variant="outline" size="sm">
+                      <CardBody>
+                        <HStack justifyContent="space-between" mb={2}>
+                          <Heading size="sm">
+                            {section.charAt(0).toUpperCase() + section.slice(1)}
+                          </Heading>
+                          <Badge
                             colorScheme={getSectionStrengthColor(strength)}
-                            height="8px"
-                            borderRadius="full"
-                            mb={3}
-                          />
+                            fontSize="md"
+                          >
+                            {strength}/10
+                          </Badge>
+                        </HStack>
+                        <Progress
+                          value={strength * 10}
+                          colorScheme={getSectionStrengthColor(strength)}
+                          height="8px"
+                          borderRadius="full"
+                          mb={3}
+                        />
 
-                          <Text fontSize="sm">
-                            {strength >= 8
-                              ? "Exceptional. This section is a major strength of your resume."
-                              : strength >= 6
-                              ? "Strong. This section effectively showcases your qualifications."
-                              : strength >= 4
-                              ? "Average. This section meets basic expectations but could be improved."
-                              : "Needs work. Focus on developing this section to improve overall resume quality."}
-                          </Text>
-                        </CardBody>
-                      </Card>
-                    </GridItem>
-                  )
-                )}
+                        <Text fontSize="sm">
+                          {strength >= 8
+                            ? "Exceptional. This section is a major strength of your resume."
+                            : strength >= 6
+                            ? "Strong. This section effectively showcases your qualifications."
+                            : strength >= 4
+                            ? "Average. This section meets basic expectations but could be improved."
+                            : "Needs work. Focus on developing this section to improve overall resume quality."}
+                        </Text>
+                      </CardBody>
+                    </Card>
+                  </GridItem>
+                ))}
               </Grid>
             </Box>
 
@@ -764,7 +762,7 @@ const ResumePage = () => {
                 Improvement Suggestions
               </Text>
               <VStack align="stretch" spacing={3}>
-                {resume.sectionStrengths.education < 5 && (
+                {sectionStrengths.education < 5 && (
                   <Card
                     variant="outline"
                     borderLeftWidth="4px"
@@ -786,7 +784,7 @@ const ResumePage = () => {
                   </Card>
                 )}
 
-                {resume.sectionStrengths.skills < 5 && (
+                {sectionStrengths.skills < 5 && (
                   <Card
                     variant="outline"
                     borderLeftWidth="4px"
@@ -806,7 +804,7 @@ const ResumePage = () => {
                   </Card>
                 )}
 
-                {resume.sectionStrengths.workExperience < 5 && (
+                {sectionStrengths.workExperience < 5 && (
                   <Card
                     variant="outline"
                     borderLeftWidth="4px"
@@ -827,7 +825,7 @@ const ResumePage = () => {
                   </Card>
                 )}
 
-                {resume.sectionStrengths.projects < 5 && (
+                {sectionStrengths.projects < 5 && (
                   <Card
                     variant="outline"
                     borderLeftWidth="4px"
@@ -847,7 +845,7 @@ const ResumePage = () => {
                   </Card>
                 )}
 
-                {resume.sectionStrengths.additional < 5 && (
+                {sectionStrengths.additional < 5 && (
                   <Card
                     variant="outline"
                     borderLeftWidth="4px"
@@ -867,7 +865,7 @@ const ResumePage = () => {
                   </Card>
                 )}
 
-                {Object.values(resume.sectionStrengths).every(
+                {Object.values(sectionStrengths).every(
                   (strength) => strength >= 5
                 ) && (
                   <Card
@@ -923,16 +921,16 @@ const ResumePage = () => {
                         <Heading size="sm">Middle Level Positions</Heading>
                         <Badge
                           colorScheme={
-                            resume.qualityLevel === "entry" ? "red" : "green"
+                            qualityLevel === "entry" ? "red" : "green"
                           }
                         >
-                          {resume.qualityLevel === "entry"
+                          {qualityLevel === "entry"
                             ? "Not Compatible"
                             : "Compatible"}
                         </Badge>
                       </HStack>
                       <Text fontSize="sm">
-                        {resume.qualityLevel === "entry"
+                        {qualityLevel === "entry"
                           ? "Your resume needs improvement to qualify for mid-level positions."
                           : "Your resume meets requirements for mid-level positions."}
                       </Text>
@@ -947,21 +945,21 @@ const ResumePage = () => {
                         <Heading size="sm">Senior Level Positions</Heading>
                         <Badge
                           colorScheme={
-                            resume.qualityLevel === "distinguished" ||
-                            resume.qualityLevel === "executive"
+                            qualityLevel === "distinguished" ||
+                            qualityLevel === "executive"
                               ? "green"
                               : "red"
                           }
                         >
-                          {resume.qualityLevel === "distinguished" ||
-                          resume.qualityLevel === "executive"
+                          {qualityLevel === "distinguished" ||
+                          qualityLevel === "executive"
                             ? "Compatible"
                             : "Not Compatible"}
                         </Badge>
                       </HStack>
                       <Text fontSize="sm">
-                        {resume.qualityLevel === "distinguished" ||
-                        resume.qualityLevel === "executive"
+                        {qualityLevel === "distinguished" ||
+                        qualityLevel === "executive"
                           ? "Your resume qualifies you for senior-level positions."
                           : "Your resume needs significant improvement for senior roles."}
                       </Text>
@@ -976,18 +974,16 @@ const ResumePage = () => {
                         <Heading size="sm">Executive Positions</Heading>
                         <Badge
                           colorScheme={
-                            resume.qualityLevel === "executive"
-                              ? "green"
-                              : "red"
+                            qualityLevel === "executive" ? "green" : "red"
                           }
                         >
-                          {resume.qualityLevel === "executive"
+                          {qualityLevel === "executive"
                             ? "Compatible"
                             : "Not Compatible"}
                         </Badge>
                       </HStack>
                       <Text fontSize="sm">
-                        {resume.qualityLevel === "executive"
+                        {qualityLevel === "executive"
                           ? "Your resume demonstrates leadership and expertise suitable for executive roles."
                           : "Executive positions require a higher level of achievement and experience."}
                       </Text>

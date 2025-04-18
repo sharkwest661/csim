@@ -1,5 +1,5 @@
 // components/layout/MainLayout.jsx
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import {
   Box,
   Flex,
@@ -12,7 +12,6 @@ import {
   HStack,
   Spacer,
   VStack,
-  Button,
 } from "@chakra-ui/react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -26,13 +25,19 @@ import {
   Award,
 } from "lucide-react";
 import { useGameStore } from "../../store/gameStore";
+import { useSettingsStore } from "../../store/settingsStore";
 
 const MainLayout = ({ children }) => {
   const { colorMode, toggleColorMode } = useColorMode();
   const navigate = useNavigate();
   const location = useLocation();
+  const initialRenderRef = useRef(true);
 
-  // Get game state to determine which navigation items to show
+  // Get settings from store - use selective state picking
+  const darkMode = useSettingsStore((state) => state.darkMode);
+  const toggleDarkMode = useSettingsStore((state) => state.toggleDarkMode);
+
+  // Get game state to determine which navigation items to show - selective state picking
   const gameStarted = useGameStore((state) => state.gameStarted);
   const currentStage = useGameStore((state) => state.currentStage);
 
@@ -40,6 +45,24 @@ const MainLayout = ({ children }) => {
   const bgColor = useColorModeValue("white", "gray.800");
   const textColor = useColorModeValue("gray.800", "white");
   const borderColor = useColorModeValue("gray.200", "gray.700");
+
+  // Handle theme toggle - update both Chakra UI and settings store
+  const handleThemeToggle = () => {
+    toggleDarkMode();
+    toggleColorMode();
+  };
+
+  // One-time sync on initial mount only
+  useEffect(() => {
+    if (initialRenderRef.current) {
+      initialRenderRef.current = false;
+
+      // Only sync if they're out of sync
+      if ((colorMode === "dark") !== darkMode) {
+        toggleColorMode();
+      }
+    }
+  }, [colorMode, darkMode, toggleColorMode]);
 
   return (
     <Box minH="100vh" bg={useColorModeValue("gray.50", "gray.900")}>
@@ -80,7 +103,7 @@ const MainLayout = ({ children }) => {
             icon={
               colorMode === "light" ? <Moon size={20} /> : <Sun size={20} />
             }
-            onClick={toggleColorMode}
+            onClick={handleThemeToggle}
           />
 
           <IconButton
@@ -191,6 +214,19 @@ const MainLayout = ({ children }) => {
             isDisabled={
               currentStage !== "character_creation" &&
               !location.pathname.includes("character")
+            }
+          />
+
+          <IconButton
+            aria-label="University Entrance Exam"
+            variant={
+              location.pathname.includes("pre-university") ? "solid" : "ghost"
+            }
+            icon={<BookOpen size={24} />}
+            onClick={() => navigate("/pre-university-exam")}
+            isDisabled={
+              currentStage !== "pre_university" &&
+              !location.pathname.includes("pre-university")
             }
           />
 

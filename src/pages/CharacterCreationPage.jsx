@@ -195,13 +195,13 @@ const CharacterCreationPage = () => {
   // Complete character creation
   const completeCharacterCreation = () => {
     finalizeCharacter();
-    advanceStage("education");
-    navigate("/education");
+    advanceStage("pre_university"); // Changed from "education" to "pre_university"
+    navigate("/pre-university-exam");
 
     toast({
       title: "Character created successfully!",
       description:
-        "Your IT career journey begins now. Start your education to build your future.",
+        "Your IT career journey begins now. Start with the university entrance exam to determine your education path.",
       status: "success",
       duration: 5000,
       isClosable: true,

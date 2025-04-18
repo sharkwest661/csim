@@ -1,5 +1,5 @@
 // pages/SettingsPage.jsx
-import React from "react";
+import React, { useRef } from "react";
 import {
   Box,
   Button,
@@ -20,7 +20,6 @@ import {
   CardBody,
   CardHeader,
   Divider,
-  IconButton,
   useToast,
   AlertDialog,
   AlertDialogBody,
@@ -29,6 +28,7 @@ import {
   AlertDialogContent,
   AlertDialogOverlay,
   useDisclosure,
+  useColorMode,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { Save, Trash2, Volume2, Bell, Moon, Sun, Clock } from "lucide-react";
@@ -39,29 +39,33 @@ const SettingsPage = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const cancelRef = React.useRef();
+  const cancelRef = useRef();
+  const initialRenderRef = useRef(true);
 
-  // Game state
+  // Get Chakra UI color mode
+  const { colorMode, toggleColorMode } = useColorMode();
+
+  // Game state - selective state picking
   const gameStarted = useGameStore((state) => state.gameStarted);
   const resetGame = useGameStore((state) => state.resetGame);
 
-  // Settings state
-  const settings = useSettingsStore((state) => ({
-    difficulty: state.difficulty,
-    language: state.language,
-    soundEffects: state.soundEffects,
-    music: state.music,
-    notifications: state.notifications,
-    darkMode: state.darkMode,
-    autosave: state.autosave,
-    autosaveInterval: state.autosaveInterval,
-    textSize: state.textSize,
-    animationsEnabled: state.animationsEnabled,
-    highContrastMode: state.highContrastMode,
-    gameSpeed: state.gameSpeed,
-  }));
+  // Settings state - individual selectors to prevent unnecessary re-renders
+  const difficulty = useSettingsStore((state) => state.difficulty);
+  const language = useSettingsStore((state) => state.language);
+  const soundEffects = useSettingsStore((state) => state.soundEffects);
+  const music = useSettingsStore((state) => state.music);
+  const notifications = useSettingsStore((state) => state.notifications);
+  const darkMode = useSettingsStore((state) => state.darkMode);
+  const autosave = useSettingsStore((state) => state.autosave);
+  const autosaveInterval = useSettingsStore((state) => state.autosaveInterval);
+  const textSize = useSettingsStore((state) => state.textSize);
+  const animationsEnabled = useSettingsStore(
+    (state) => state.animationsEnabled
+  );
+  const highContrastMode = useSettingsStore((state) => state.highContrastMode);
+  const gameSpeed = useSettingsStore((state) => state.gameSpeed);
 
-  // Settings actions
+  // Settings actions - individual selectors
   const setDifficulty = useSettingsStore((state) => state.setDifficulty);
   const setLanguage = useSettingsStore((state) => state.setLanguage);
   const toggleSoundEffects = useSettingsStore(
@@ -125,6 +129,15 @@ const SettingsPage = () => {
     });
   };
 
+  // Handle dark mode toggle - update both Zustand store and Chakra UI
+  const handleDarkModeToggle = () => {
+    // Important: update Zustand store first, then UI
+    toggleDarkMode();
+    toggleColorMode();
+  };
+
+  // No need for useEffect here since we're using proper selectors
+
   return (
     <Box mb={8}>
       <HStack justifyContent="space-between" mb={6}>
@@ -151,7 +164,7 @@ const SettingsPage = () => {
               <FormControl>
                 <FormLabel>Difficulty</FormLabel>
                 <Select
-                  value={settings.difficulty}
+                  value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
                   isDisabled={gameStarted}
                 >
@@ -178,7 +191,7 @@ const SettingsPage = () => {
               <FormControl>
                 <FormLabel>Language</FormLabel>
                 <Select
-                  value={settings.language}
+                  value={language}
                   onChange={(e) => setLanguage(e.target.value)}
                 >
                   <option value="azerbaijani">Azerbaijani</option>
@@ -195,7 +208,7 @@ const SettingsPage = () => {
                     min={0.5}
                     max={3}
                     step={0.5}
-                    value={settings.gameSpeed}
+                    value={gameSpeed}
                     onChange={setGameSpeed}
                     flex="1"
                   >
@@ -205,7 +218,7 @@ const SettingsPage = () => {
                     <SliderThumb />
                   </Slider>
                   <Text fontWeight="bold" minW="40px" textAlign="right">
-                    {settings.gameSpeed}x
+                    {gameSpeed}x
                   </Text>
                 </HStack>
                 <Text fontSize="sm" color="gray.500" mt={1}>
@@ -215,13 +228,10 @@ const SettingsPage = () => {
 
               <FormControl display="flex" alignItems="center">
                 <FormLabel mb="0">Autosave</FormLabel>
-                <Switch
-                  isChecked={settings.autosave}
-                  onChange={toggleAutosave}
-                />
+                <Switch isChecked={autosave} onChange={toggleAutosave} />
               </FormControl>
 
-              {settings.autosave && (
+              {autosave && (
                 <FormControl>
                   <FormLabel>Autosave Interval (minutes)</FormLabel>
                   <HStack>
@@ -230,7 +240,7 @@ const SettingsPage = () => {
                       min={1}
                       max={30}
                       step={1}
-                      value={settings.autosaveInterval}
+                      value={autosaveInterval}
                       onChange={setAutosaveInterval}
                       flex="1"
                     >
@@ -240,7 +250,7 @@ const SettingsPage = () => {
                       <SliderThumb />
                     </Slider>
                     <Text fontWeight="bold" minW="40px" textAlign="right">
-                      {settings.autosaveInterval}m
+                      {autosaveInterval}m
                     </Text>
                   </HStack>
                 </FormControl>
@@ -262,7 +272,7 @@ const SettingsPage = () => {
                   <Text>Sound Effects</Text>
                 </HStack>
                 <Switch
-                  isChecked={settings.soundEffects}
+                  isChecked={soundEffects}
                   onChange={toggleSoundEffects}
                 />
               </HStack>
@@ -272,7 +282,7 @@ const SettingsPage = () => {
                   <Volume2 size={18} />
                   <Text>Music</Text>
                 </HStack>
-                <Switch isChecked={settings.music} onChange={toggleMusic} />
+                <Switch isChecked={music} onChange={toggleMusic} />
               </HStack>
 
               <HStack justifyContent="space-between">
@@ -281,20 +291,17 @@ const SettingsPage = () => {
                   <Text>Notifications</Text>
                 </HStack>
                 <Switch
-                  isChecked={settings.notifications}
+                  isChecked={notifications}
                   onChange={toggleNotifications}
                 />
               </HStack>
 
               <HStack justifyContent="space-between">
                 <HStack>
-                  {settings.darkMode ? <Moon size={18} /> : <Sun size={18} />}
+                  {darkMode ? <Moon size={18} /> : <Sun size={18} />}
                   <Text>Dark Mode</Text>
                 </HStack>
-                <Switch
-                  isChecked={settings.darkMode}
-                  onChange={toggleDarkMode}
-                />
+                <Switch isChecked={darkMode} onChange={handleDarkModeToggle} />
               </HStack>
 
               <Divider />
@@ -302,7 +309,7 @@ const SettingsPage = () => {
               <FormControl>
                 <FormLabel>Text Size</FormLabel>
                 <Select
-                  value={settings.textSize}
+                  value={textSize}
                   onChange={(e) => setTextSize(e.target.value)}
                 >
                   <option value="small">Small</option>
@@ -314,7 +321,7 @@ const SettingsPage = () => {
               <HStack justifyContent="space-between">
                 <Text>Enable Animations</Text>
                 <Switch
-                  isChecked={settings.animationsEnabled}
+                  isChecked={animationsEnabled}
                   onChange={toggleAnimations}
                 />
               </HStack>
@@ -322,7 +329,7 @@ const SettingsPage = () => {
               <HStack justifyContent="space-between">
                 <Text>High Contrast Mode</Text>
                 <Switch
-                  isChecked={settings.highContrastMode}
+                  isChecked={highContrastMode}
                   onChange={toggleHighContrastMode}
                 />
               </HStack>

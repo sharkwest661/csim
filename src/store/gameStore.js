@@ -1,4 +1,4 @@
-// gameStore.js
+// gameStore.js - UPDATED with pre_university stage
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -17,7 +17,7 @@ export const useGameStore = create(
       gameStarted: false,
       gameId: null, // Unique identifier for this playthrough
       lastSaved: null,
-      currentStage: "character_creation", // 'character_creation', 'education', 'military', 'career', 'game_over'
+      currentStage: "character_creation", // 'character_creation', 'pre_university', 'education', 'military', 'career', 'game_over'
 
       // Game actions
 
@@ -55,6 +55,7 @@ export const useGameStore = create(
       advanceStage: (nextStage) => {
         const validStages = [
           "character_creation",
+          "pre_university",
           "education",
           "military",
           "career",
@@ -67,9 +68,13 @@ export const useGameStore = create(
         }
 
         // Perform stage-specific transitions
-        if (nextStage === "education") {
-          // Character creation is complete, education begins
+        if (nextStage === "pre_university") {
+          // Character creation is complete, pre-university exam begins
           useCharacterStore.getState().finalizeCharacter();
+          useGameEventsStore.getState().setGamePhase("pre_university");
+        } else if (nextStage === "education") {
+          // Pre-university exam is complete, education begins
+          // (This could come directly from character creation for a character with a high entrance score)
           useGameEventsStore.getState().setGamePhase("education");
         } else if (nextStage === "military") {
           // Education complete, military service begins (for male characters)
