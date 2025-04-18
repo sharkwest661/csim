@@ -38,6 +38,7 @@ import {
   Briefcase,
   ChevronRight,
   GraduationCap,
+  Info,
 } from "lucide-react";
 import { useEducationStore } from "../store/educationStore";
 import { useCharacterStore } from "../store/characterStore";

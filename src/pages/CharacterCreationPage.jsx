@@ -629,7 +629,7 @@ const CharacterCreationPage = () => {
                               onChange={(val) => setSkill(skillKey, val)}
                               isDisabled={
                                 remainingSkillPoints <= 0 &&
-                                skills[skillKey] < val
+                                skills[skillKey] < 5
                               }
                               colorScheme="green"
                             >
@@ -663,7 +663,7 @@ const CharacterCreationPage = () => {
                               isDisabled={
                                 skillKey === "azerbaijani" || // Azerbaijani is fixed at 5
                                 (remainingSkillPoints <= 0 &&
-                                  skills[skillKey] < val)
+                                  skills[skillKey] < 5)
                               }
                               colorScheme="green"
                             >
@@ -702,7 +702,7 @@ const CharacterCreationPage = () => {
                               onChange={(val) => setSkill(skillKey, val)}
                               isDisabled={
                                 remainingSkillPoints <= 0 &&
-                                skills[skillKey] < val
+                                skills[skillKey] < 5
                               }
                               colorScheme="green"
                             >
@@ -735,7 +735,7 @@ const CharacterCreationPage = () => {
                               onChange={(val) => setSkill(skillKey, val)}
                               isDisabled={
                                 remainingSkillPoints <= 0 &&
-                                skills[skillKey] < val
+                                skills[skillKey] < 5
                               }
                               colorScheme="green"
                             >
