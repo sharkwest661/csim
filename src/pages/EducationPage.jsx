@@ -1,697 +1,799 @@
-// pages/EducationPage.jsx
 import React, { useState, useEffect } from "react";
 import {
   Box,
-  Button,
   Heading,
   Text,
-  VStack,
-  HStack,
+  Button,
   Grid,
-  GridItem,
+  Flex,
+  Stack,
   Progress,
   Badge,
-  useColorModeValue,
-  Card,
-  CardBody,
-  CardHeader,
-  CardFooter,
-  Divider,
   Stat,
   StatLabel,
   StatNumber,
   StatHelpText,
+  Divider,
+  SimpleGrid,
+  Card,
+  CardHeader,
+  CardBody,
+  CardFooter,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure,
+  Slider,
+  SliderTrack,
+  SliderFilledTrack,
+  SliderThumb,
+  SliderMark,
+  Tab,
   Tabs,
   TabList,
-  Tab,
-  TabPanels,
   TabPanel,
-  useToast,
-  Flex,
-  Spacer,
+  TabPanels,
 } from "@chakra-ui/react";
-import { useNavigate } from "react-router-dom";
-import {
-  BookOpen,
-  Award,
-  Calendar,
-  Briefcase,
-  ChevronRight,
-  GraduationCap,
-  Info,
-} from "lucide-react";
 import { useEducationStore } from "../store/educationStore";
-import { useCharacterStore } from "../store/characterStore";
-import { useGameStore } from "../store/gameStore";
-import { useGameEventsStore } from "../store/gameEventsStore";
-import { useDataStore } from "../store/dataStore";
 
-const EducationPage = () => {
-  const navigate = useNavigate();
-  const toast = useToast();
+function EducationPage() {
+  // Use the correct pattern for accessing Zustand store
+  // Select only the specific state and actions needed
+  const semester = useEducationStore((state) => state.semester);
+  const gpa = useEducationStore((state) => state.gpa);
+  const energy = useEducationStore((state) => state.energy);
+  const selectedCourses = useEducationStore((state) => state.selectedCourses);
+  const courseGrades = useEducationStore((state) => state.courseGrades);
+  const timeUnits = useEducationStore((state) => state.timeUnits);
+  const allocatedTime = useEducationStore((state) => state.allocatedTime);
+  const skills = useEducationStore((state) => state.skills);
+  const activeEvent = useEducationStore((state) => state.activeEvent);
+  const semesterHistory = useEducationStore((state) => state.semesterHistory);
 
-  // Get university data
-  const universities = useDataStore((state) => state.universities);
-  const degreePrograms = useDataStore((state) => state.degreePrograms);
+  // Store actions
+  const getAvailableCourses = useEducationStore(
+    (state) => state.getAvailableCourses
+  );
+  const selectCourses = useEducationStore((state) => state.selectCourses);
+  const allocateTime = useEducationStore((state) => state.allocateTime);
+  const completeCourse = useEducationStore((state) => state.completeCourse);
+  const advanceSemester = useEducationStore((state) => state.advanceSemester);
+  const handleEvent = useEducationStore((state) => state.handleEvent);
+  const studyCourse = useEducationStore((state) => state.studyCourse);
 
-  // Education state
-  const education = useEducationStore((state) => ({
-    entranceExamScore: state.entranceExamScore,
-    university: state.university,
-    degreeProgram: state.degreeProgram,
-    specialization: state.specialization,
-    currentSemester: state.currentSemester,
-    totalSemesters: state.totalSemesters,
-    gpa: state.gpa,
-    isEntranceExamCompleted: state.isEntranceExamCompleted,
-    isEnrolled: state.isEnrolled,
-    isGraduated: state.isGraduated,
-  }));
+  // Local component state
+  const [availableCourses, setAvailableCourses] = useState([]);
+  const [tempTimeAllocation, setTempTimeAllocation] = useState({
+    ...allocatedTime,
+  });
+  const [timeRemaining, setTimeRemaining] = useState(timeUnits);
+  const [selectedCourseIds, setSelectedCourseIds] = useState([]);
 
-  // Character state
-  const character = useCharacterStore((state) => ({
-    name: state.name,
-    gender: state.gender,
-    attributes: state.attributes,
-    familyBackground: state.familyBackground,
-  }));
+  // Modal controls
+  const {
+    isOpen: isSelectCoursesOpen,
+    onOpen: onOpenSelectCourses,
+    onClose: onCloseSelectCourses,
+  } = useDisclosure();
 
-  // Game state
-  const advanceStage = useGameStore((state) => state.advanceStage);
-  const processSemester = useGameStore((state) => state.processSemester);
+  const {
+    isOpen: isAllocateTimeOpen,
+    onOpen: onOpenAllocateTime,
+    onClose: onCloseAllocateTime,
+  } = useDisclosure();
 
-  // Game events
-  const gameDate = useGameEventsStore((state) => state.currentDate);
-  const energy = useGameEventsStore((state) => state.energy);
-  const stress = useGameEventsStore((state) => state.stress);
+  const {
+    isOpen: isEventOpen,
+    onOpen: onOpenEvent,
+    onClose: onCloseEvent,
+  } = useDisclosure();
 
-  // Local state
-  const [selectedUniversity, setSelectedUniversity] = useState(null);
-  const [selectedProgram, setSelectedProgram] = useState(null);
-  const [examLoading, setExamLoading] = useState(false);
-  const [semesterLoading, setSemesterLoading] = useState(false);
+  // Initialize or update available courses when semester changes
+  useEffect(() => {
+    const courses = getAvailableCourses();
+    setAvailableCourses(courses);
 
-  // Colors
-  const cardBg = useColorModeValue("white", "gray.700");
-  const highlightColor = useColorModeValue("blue.500", "blue.300");
+    // Initialize selectedCourseIds from the store's selectedCourses
+    setSelectedCourseIds(selectedCourses.map((course) => course.id));
 
-  // Format date
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(date);
-  };
+    // Reset temp time allocation to match stored allocation
+    setTempTimeAllocation({ ...allocatedTime });
+    updateTimeRemaining({ ...allocatedTime });
+  }, [semester, getAvailableCourses, selectedCourses, allocatedTime]);
 
-  // Take entrance exam
-  const takeEntranceExam = () => {
-    setExamLoading(true);
-
-    // Simulate exam time
-    setTimeout(() => {
-      // Calculate score based on character attributes
-      const baseScore = 350; // Base score
-      const intelligenceBonus = character.attributes.intelligence * 20; // Up to 200 points
-      const disciplineBonus = character.attributes.discipline * 5; // Up to 50 points
-
-      // Family background modifier
-      let backgroundModifier = 1.0;
-      switch (character.familyBackground) {
-        case "lower":
-          backgroundModifier = 0.9;
-          break;
-        case "middle":
-          backgroundModifier = 1.0;
-          break;
-        case "higher":
-          backgroundModifier = 1.1;
-          break;
-        default:
-          backgroundModifier = 1.0;
-      }
-
-      // Calculate final score with some randomness
-      const randomFactor = Math.random() * 100 - 50; // -50 to +50
-      let finalScore = Math.floor(
-        (baseScore + intelligenceBonus + disciplineBonus) * backgroundModifier +
-          randomFactor
-      );
-
-      // Ensure score is within bounds (0-700)
-      finalScore = Math.max(0, Math.min(700, finalScore));
-
-      // Update education store
-      useEducationStore.getState().setEntranceExamScore(finalScore);
-
-      // Show result
-      toast({
-        title: "Entrance Exam Completed",
-        description: `Your score: ${finalScore} out of 700`,
-        status:
-          finalScore >= 500
-            ? "success"
-            : finalScore >= 400
-            ? "info"
-            : "warning",
-        duration: 5000,
-        isClosable: true,
-      });
-
-      setExamLoading(false);
-    }, 2000);
-  };
-
-  // Enroll in university
-  const enrollInUniversity = () => {
-    if (!selectedUniversity || !selectedProgram) {
-      toast({
-        title: "Selection Required",
-        description: "Please select both a university and degree program.",
-        status: "warning",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
+  // Show event modal when active event exists
+  useEffect(() => {
+    if (activeEvent) {
+      onOpenEvent();
     }
+  }, [activeEvent, onOpenEvent]);
 
-    // Find the selected university and program data
-    const university = universities.find((u) => u.id === selectedUniversity);
-    const program = degreePrograms.find((p) => p.id === selectedProgram);
-
-    // Check if score meets the threshold
-    if (education.entranceExamScore < university.entranceScoreThreshold) {
-      toast({
-        title: "Application Rejected",
-        description: `Your score (${education.entranceExamScore}) doesn't meet ${university.name}'s threshold (${university.entranceScoreThreshold}).`,
-        status: "error",
-        duration: 4000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    // Update education store
-    useEducationStore.getState().enrollInUniversity({
-      name: university.name,
-      prestigeRating: university.prestigeRating,
-      program: program.name,
-      specialization: program.name, // Simple for now, could be more complex later
-    });
-
-    toast({
-      title: "Enrollment Successful!",
-      description: `You've been enrolled in ${program.name} at ${university.name}.`,
-      status: "success",
-      duration: 4000,
-      isClosable: true,
-    });
+  // Update remaining time calculation
+  const updateTimeRemaining = (allocation) => {
+    const used = Object.values(allocation).reduce((sum, val) => sum + val, 0);
+    setTimeRemaining(timeUnits - used);
   };
 
-  // Complete a semester
-  const completeSemester = () => {
-    setSemesterLoading(true);
-
-    // Process the semester in the game store
-    processSemester();
-
-    setTimeout(() => {
-      setSemesterLoading(false);
-
-      // Check if education is complete
-      if (useEducationStore.getState().isGraduated) {
-        toast({
-          title: "Graduation!",
-          description: `Congratulations! You have graduated with a GPA of ${useEducationStore
-            .getState()
-            .gpa.toFixed(2)}.`,
-          status: "success",
-          duration: 5000,
-          isClosable: true,
-        });
-
-        // If the character is male, go to military service
-        if (character.gender === "male") {
-          navigate("/military-service");
-        } else {
-          // If female, skip to career
-          navigate("/career");
-        }
-      }
-    }, 2000);
+  // Handle time allocation changes
+  const handleTimeAllocationChange = (activity, value) => {
+    const newAllocation = { ...tempTimeAllocation, [activity]: value };
+    setTempTimeAllocation(newAllocation);
+    updateTimeRemaining(newAllocation);
   };
 
-  // Determine which education stage to show
-  const renderEducationStage = () => {
-    if (!education.isEntranceExamCompleted) {
-      return (
-        <Card bg={cardBg} shadow="md" mb={6}>
-          <CardHeader>
-            <Heading size="md">University Entrance Exam</Heading>
-            <Text fontSize="sm" color="gray.500" mt={2}>
-              Take the national entrance exam to qualify for university
-              admission.
-            </Text>
-          </CardHeader>
-          <CardBody>
-            <VStack spacing={4} align="stretch">
-              <Text>
-                The entrance exam tests your knowledge and aptitude for higher
-                education. Your score will determine which universities you can
-                apply to.
-              </Text>
-
-              <Box
-                p={4}
-                bg={useColorModeValue("blue.50", "blue.900")}
-                borderRadius="md"
-              >
-                <HStack>
-                  <Info
-                    size={20}
-                    color={useColorModeValue("#3182CE", "#90CDF4")}
-                  />
-                  <Text fontWeight="medium">
-                    Your Intelligence: {character.attributes.intelligence}/10
-                  </Text>
-                </HStack>
-                <Text fontSize="sm" ml={6} mt={1}>
-                  Higher intelligence improves your exam performance.
-                </Text>
-              </Box>
-            </VStack>
-          </CardBody>
-          <CardFooter>
-            <Button
-              leftIcon={<BookOpen size={18} />}
-              colorScheme="blue"
-              isLoading={examLoading}
-              loadingText="Taking Exam..."
-              onClick={takeEntranceExam}
-              width="full"
-            >
-              Take Entrance Exam
-            </Button>
-          </CardFooter>
-        </Card>
-      );
-    } else if (!education.isEnrolled) {
-      return (
-        <Card bg={cardBg} shadow="md" mb={6}>
-          <CardHeader>
-            <Heading size="md">University Application</Heading>
-            <Text fontSize="sm" color="gray.500" mt={2}>
-              Apply to a university based on your entrance exam score.
-            </Text>
-          </CardHeader>
-          <CardBody>
-            <VStack spacing={6} align="stretch">
-              <Stat>
-                <StatLabel>Your Entrance Exam Score</StatLabel>
-                <StatNumber>{education.entranceExamScore} / 700</StatNumber>
-                <StatHelpText>
-                  {education.entranceExamScore >= 600
-                    ? "Excellent! You qualify for top universities."
-                    : education.entranceExamScore >= 500
-                    ? "Good score. You qualify for most universities."
-                    : education.entranceExamScore >= 400
-                    ? "Average score. Some universities may accept you."
-                    : "Below average. Limited university options."}
-                </StatHelpText>
-              </Stat>
-
-              <Divider />
-
-              <Text fontWeight="bold">Select a University:</Text>
-              <Grid
-                templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }}
-                gap={4}
-              >
-                {universities.map((university) => (
-                  <GridItem key={university.id}>
-                    <Card
-                      variant="outline"
-                      borderWidth="1px"
-                      borderColor={
-                        selectedUniversity === university.id
-                          ? highlightColor
-                          : "gray.200"
-                      }
-                      bg={
-                        selectedUniversity === university.id
-                          ? useColorModeValue("blue.50", "blue.900")
-                          : "transparent"
-                      }
-                      onClick={() => setSelectedUniversity(university.id)}
-                      cursor="pointer"
-                      _hover={{ borderColor: highlightColor }}
-                      transition="all 0.2s"
-                    >
-                      <CardBody>
-                        <VStack align="start" spacing={2}>
-                          <Heading size="sm">{university.name}</Heading>
-                          <Badge
-                            colorScheme={
-                              education.entranceExamScore >=
-                              university.entranceScoreThreshold
-                                ? "green"
-                                : "red"
-                            }
-                          >
-                            Min Score: {university.entranceScoreThreshold}
-                          </Badge>
-                          <HStack>
-                            <Text fontWeight="bold">Prestige:</Text>
-                            <HStack spacing={1}>
-                              {[...Array(university.prestigeRating)].map(
-                                (_, i) => (
-                                  <Award
-                                    key={i}
-                                    size={14}
-                                    color={useColorModeValue(
-                                      "#3182CE",
-                                      "#90CDF4"
-                                    )}
-                                  />
-                                )
-                              )}
-                            </HStack>
-                          </HStack>
-                          <Text fontSize="sm">{university.description}</Text>
-                        </VStack>
-                      </CardBody>
-                    </Card>
-                  </GridItem>
-                ))}
-              </Grid>
-
-              <Text fontWeight="bold" mt={2}>
-                Select a Degree Program:
-              </Text>
-              <Grid
-                templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }}
-                gap={4}
-              >
-                {degreePrograms.map((program) => (
-                  <GridItem key={program.id}>
-                    <Card
-                      variant="outline"
-                      borderWidth="1px"
-                      borderColor={
-                        selectedProgram === program.id
-                          ? highlightColor
-                          : "gray.200"
-                      }
-                      bg={
-                        selectedProgram === program.id
-                          ? useColorModeValue("blue.50", "blue.900")
-                          : "transparent"
-                      }
-                      onClick={() => setSelectedProgram(program.id)}
-                      cursor="pointer"
-                      _hover={{ borderColor: highlightColor }}
-                      transition="all 0.2s"
-                    >
-                      <CardBody>
-                        <VStack align="start" spacing={2}>
-                          <Heading size="sm">{program.name}</Heading>
-                          <Text fontSize="sm">{program.description}</Text>
-                          <Text fontSize="sm" fontWeight="bold">
-                            Career Paths:
-                          </Text>
-                          <HStack flexWrap="wrap">
-                            {program.careers.map((career, index) => (
-                              <Badge key={index} colorScheme="purple">
-                                {career}
-                              </Badge>
-                            ))}
-                          </HStack>
-                        </VStack>
-                      </CardBody>
-                    </Card>
-                  </GridItem>
-                ))}
-              </Grid>
-            </VStack>
-          </CardBody>
-          <CardFooter>
-            <Button
-              leftIcon={<GraduationCap size={18} />}
-              colorScheme="blue"
-              onClick={enrollInUniversity}
-              width="full"
-              isDisabled={!selectedUniversity || !selectedProgram}
-            >
-              Enroll in University
-            </Button>
-          </CardFooter>
-        </Card>
-      );
-    } else if (!education.isGraduated) {
-      // Studying at university
-      return (
-        <>
-          <Card bg={cardBg} shadow="md" mb={6}>
-            <CardHeader>
-              <HStack justifyContent="space-between">
-                <Heading size="md">University Studies</Heading>
-                <Badge colorScheme="blue" fontSize="md" px={2} py={1}>
-                  Semester {education.currentSemester} of{" "}
-                  {education.totalSemesters}
-                </Badge>
-              </HStack>
-            </CardHeader>
-            <CardBody>
-              <VStack spacing={6} align="stretch">
-                <HStack wrap="wrap" spacing={4}>
-                  <Stat flex="1" minW="150px">
-                    <StatLabel>University</StatLabel>
-                    <StatNumber fontSize="lg">
-                      {education.university}
-                    </StatNumber>
-                  </Stat>
-
-                  <Stat flex="1" minW="150px">
-                    <StatLabel>Program</StatLabel>
-                    <StatNumber fontSize="lg">
-                      {education.degreeProgram}
-                    </StatNumber>
-                  </Stat>
-
-                  <Stat flex="1" minW="150px">
-                    <StatLabel>Current GPA</StatLabel>
-                    <StatNumber fontSize="lg">
-                      {education.gpa.toFixed(2)}
-                    </StatNumber>
-                  </Stat>
-                </HStack>
-
-                <Box>
-                  <Text fontWeight="bold" mb={2}>
-                    Semester Progress
-                  </Text>
-                  <Progress
-                    value={
-                      (education.currentSemester / education.totalSemesters) *
-                      100
-                    }
-                    colorScheme="blue"
-                    height="8px"
-                    borderRadius="full"
-                  />
-                  <HStack justifyContent="space-between" mt={1}>
-                    <Text fontSize="sm">1st Year</Text>
-                    <Text fontSize="sm">Graduation</Text>
-                  </HStack>
-                </Box>
-
-                <Divider />
-
-                <Text fontSize="lg" fontWeight="bold">
-                  Current Semester Activities
-                </Text>
-
-                <Tabs variant="soft-rounded" colorScheme="blue" size="sm">
-                  <TabList>
-                    <Tab>Study</Tab>
-                    <Tab>Skill Development</Tab>
-                    <Tab>Social</Tab>
-                    <Tab>Part-time Jobs</Tab>
-                  </TabList>
-
-                  <TabPanels>
-                    <TabPanel>
-                      <Text mb={4}>
-                        Focus on your coursework to improve your GPA and
-                        academic standing.
-                      </Text>
-                      <VStack align="stretch" spacing={4}>
-                        <Text>
-                          This section will be implemented with coursework
-                          minigames and study options.
-                        </Text>
-                      </VStack>
-                    </TabPanel>
-
-                    <TabPanel>
-                      <Text mb={4}>
-                        Develop technical and soft skills outside of your
-                        regular coursework.
-                      </Text>
-                      <VStack align="stretch" spacing={4}>
-                        <Text>
-                          This section will be implemented with skill
-                          development activities.
-                        </Text>
-                      </VStack>
-                    </TabPanel>
-
-                    <TabPanel>
-                      <Text mb={4}>
-                        Build connections and relationships that can help your
-                        future career.
-                      </Text>
-                      <VStack align="stretch" spacing={4}>
-                        <Text>
-                          This section will be implemented with networking and
-                          social activities.
-                        </Text>
-                      </VStack>
-                    </TabPanel>
-
-                    <TabPanel>
-                      <Text mb={4}>
-                        Earn money and gain work experience with part-time
-                        employment.
-                      </Text>
-                      <VStack align="stretch" spacing={4}>
-                        <Text>
-                          This section will be implemented with job
-                          opportunities and work experiences.
-                        </Text>
-                      </VStack>
-                    </TabPanel>
-                  </TabPanels>
-                </Tabs>
-              </VStack>
-            </CardBody>
-            <CardFooter>
-              <Button
-                leftIcon={<Calendar size={18} />}
-                colorScheme="green"
-                onClick={completeSemester}
-                width="full"
-                isLoading={semesterLoading}
-                loadingText="Completing Semester..."
-              >
-                Complete Semester
-              </Button>
-            </CardFooter>
-          </Card>
-
-          <Card bg={cardBg} shadow="md">
-            <CardHeader>
-              <Heading size="sm">Character Status</Heading>
-            </CardHeader>
-            <CardBody>
-              <Grid
-                templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }}
-                gap={4}
-              >
-                <GridItem>
-                  <Text fontWeight="bold" mb={1}>
-                    Energy: {energy}%
-                  </Text>
-                  <Progress
-                    value={energy}
-                    colorScheme="blue"
-                    height="8px"
-                    borderRadius="full"
-                  />
-                </GridItem>
-
-                <GridItem>
-                  <Text fontWeight="bold" mb={1}>
-                    Stress: {stress}%
-                  </Text>
-                  <Progress
-                    value={stress}
-                    colorScheme="red"
-                    height="8px"
-                    borderRadius="full"
-                  />
-                </GridItem>
-              </Grid>
-            </CardBody>
-          </Card>
-        </>
-      );
+  // Save time allocation
+  const saveTimeAllocation = () => {
+    const success = allocateTime(tempTimeAllocation);
+    if (success) {
+      onCloseAllocateTime();
     } else {
-      // Graduated
-      return (
-        <Card bg={cardBg} shadow="md" mb={6}>
-          <CardHeader>
-            <Heading size="md">Graduation Completed</Heading>
-          </CardHeader>
-          <CardBody>
-            <VStack spacing={4} align="center">
-              <GraduationCap
-                size={48}
-                color={useColorModeValue("#3182CE", "#90CDF4")}
-              />
-              <Heading size="md">Congratulations!</Heading>
-              <Text textAlign="center">
-                You have successfully graduated from {education.university} with
-                a degree in {education.degreeProgram}.
-              </Text>
-              <Stat textAlign="center">
-                <StatLabel>Final GPA</StatLabel>
-                <StatNumber>{education.gpa.toFixed(2)}</StatNumber>
-              </Stat>
-            </VStack>
-          </CardBody>
-          <CardFooter>
-            <Button
-              rightIcon={<ChevronRight size={18} />}
-              colorScheme="blue"
-              onClick={() => {
-                // Go to military service if male, otherwise go to career
-                if (character.gender === "male") {
-                  navigate("/military-service");
-                } else {
-                  navigate("/career");
-                }
-              }}
-              width="full"
-            >
-              {character.gender === "male"
-                ? "Proceed to Military Service"
-                : "Begin Your Career"}
-            </Button>
-          </CardFooter>
-        </Card>
-      );
+      // Show error (exceeding time units)
+      alert("Time allocation exceeds available time units!");
     }
+  };
+
+  // Toggle course selection
+  const toggleCourseSelection = (courseId) => {
+    setSelectedCourseIds((prev) => {
+      if (prev.includes(courseId)) {
+        return prev.filter((id) => id !== courseId);
+      } else {
+        // Limit to 4 courses per semester
+        if (prev.length < 4) {
+          return [...prev, courseId];
+        }
+        return prev;
+      }
+    });
+  };
+
+  // Save course selection
+  const saveSelectedCourses = () => {
+    selectCourses(selectedCourseIds);
+    onCloseSelectCourses();
+  };
+
+  // Handle study action for a course
+  const handleStudyCourse = (courseId) => {
+    studyCourse(courseId);
+  };
+
+  // Handle completing a course with a grade
+  const handleCompleteCourse = (courseId, grade) => {
+    completeCourse(courseId, grade);
+  };
+
+  // Handle event option selection
+  const handleEventOption = (optionIndex) => {
+    handleEvent(optionIndex);
+    onCloseEvent();
+  };
+
+  // Get color for GPA display
+  const getGpaColor = (gpa) => {
+    if (gpa >= 3.5) return "green.500";
+    if (gpa >= 3.0) return "blue.500";
+    if (gpa >= 2.0) return "yellow.500";
+    return "red.500";
+  };
+
+  // Get color for energy bar
+  const getEnergyColor = (energy) => {
+    if (energy > 70) return "green.500";
+    if (energy > 40) return "yellow.500";
+    return "red.500";
   };
 
   return (
-    <Box mb={8}>
-      <Heading size="xl" mb={6}>
-        Education
-      </Heading>
+    <Box p={5}>
+      <Flex justify="space-between" align="center" mb={6}>
+        <Heading>University Education</Heading>
+        <Stack direction="row" spacing={4}>
+          <Stat
+            textAlign="center"
+            borderWidth="1px"
+            borderRadius="lg"
+            p={2}
+            bgColor="blue.50"
+          >
+            <StatLabel>Semester</StatLabel>
+            <StatNumber color="black">{semester}/8</StatNumber>
+          </Stat>
 
-      {/* Game Date Display */}
-      {gameDate && (
-        <Text fontSize="md" color="gray.500" mb={4}>
-          Current Date: {formatDate(gameDate)}
+          <Stat
+            textAlign="center"
+            borderWidth="1px"
+            borderRadius="lg"
+            p={2}
+            bgColor="blue.50"
+          >
+            <StatLabel>GPA</StatLabel>
+            <StatNumber color={getGpaColor(gpa)}>{gpa.toFixed(2)}</StatNumber>
+          </Stat>
+        </Stack>
+      </Flex>
+
+      <Box borderWidth="1px" borderRadius="lg" p={4} mb={6} bgColor="white">
+        <Text fontWeight="bold" mb={2} color="gray.700">
+          Energy Level
         </Text>
-      )}
+        <Box position="relative">
+          <Progress
+            value={energy}
+            colorScheme={
+              getEnergyColor(energy) === "green.500"
+                ? "green"
+                : getEnergyColor(energy) === "yellow.500"
+                ? "yellow"
+                : "red"
+            }
+            size="md"
+            borderRadius="md"
+          />
+          <Text
+            position="absolute"
+            top="50%"
+            left="50%"
+            transform="translate(-50%, -50%)"
+            fontSize="sm"
+            fontWeight="bold"
+            color="gray.800"
+            bg="white"
+            px={2}
+            borderRadius="md"
+            textShadow="0px 0px 2px white"
+          >
+            {energy}/100
+          </Text>
+        </Box>
+      </Box>
 
-      {renderEducationStage()}
+      <Tabs variant="enclosed" mb={6}>
+        <TabList>
+          <Tab>Courses</Tab>
+          <Tab>Time Allocation</Tab>
+          <Tab>Skills</Tab>
+          <Tab>History</Tab>
+        </TabList>
+
+        <TabPanels>
+          {/* Courses Tab */}
+          <TabPanel>
+            <Flex justify="space-between" align="center" mb={4}>
+              <Heading size="md">Current Courses</Heading>
+              <Button
+                colorScheme="blue"
+                onClick={onOpenSelectCourses}
+                isDisabled={selectedCourses.length === 4}
+              >
+                Select Courses
+              </Button>
+            </Flex>
+
+            {selectedCourses.length === 0 ? (
+              <Alert status="info" borderRadius="md">
+                <AlertIcon />
+                <AlertDescription>
+                  No courses selected for this semester. Click "Select Courses"
+                  to begin.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                {selectedCourses.map((course) => (
+                  <Card key={course.id}>
+                    <CardHeader bg="blue.50" p={3}>
+                      <Heading size="sm">{course.name}</Heading>
+                    </CardHeader>
+                    <CardBody p={3}>
+                      <Text>Credits: {course.credits}</Text>
+                      <Text>
+                        Difficulty:{" "}
+                        {Array(course.difficulty).fill("★").join("")}
+                      </Text>
+                      <Text mt={2}>
+                        Grade:{" "}
+                        {courseGrades[course.id] ? (
+                          <Badge
+                            colorScheme={
+                              courseGrades[course.id] === "A"
+                                ? "green"
+                                : courseGrades[course.id] === "B"
+                                ? "blue"
+                                : courseGrades[course.id] === "C"
+                                ? "yellow"
+                                : "red"
+                            }
+                          >
+                            {courseGrades[course.id]}
+                          </Badge>
+                        ) : (
+                          "Not graded"
+                        )}
+                      </Text>
+                    </CardBody>
+                    <CardFooter p={3} bg="gray.50">
+                      <Stack direction="row" spacing={2}>
+                        <Button
+                          size="sm"
+                          colorScheme="teal"
+                          onClick={() => handleStudyCourse(course.id)}
+                          isDisabled={energy < 5}
+                        >
+                          Study (+5%)
+                        </Button>
+                        <Button
+                          size="sm"
+                          colorScheme="green"
+                          onClick={() => handleCompleteCourse(course.id, "A")}
+                          isDisabled={courseGrades[course.id] === "A"}
+                        >
+                          Complete (A)
+                        </Button>
+                      </Stack>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </SimpleGrid>
+            )}
+          </TabPanel>
+
+          {/* Time Allocation Tab */}
+          <TabPanel>
+            <Flex justify="space-between" align="center" mb={4}>
+              <Heading size="md">Time Allocation</Heading>
+              <Button colorScheme="blue" onClick={onOpenAllocateTime}>
+                Adjust Allocation
+              </Button>
+            </Flex>
+
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+              <Box borderWidth="1px" borderRadius="md" p={4}>
+                <Text fontWeight="bold" mb={2}>
+                  Study
+                </Text>
+                <Progress
+                  value={(allocatedTime.study / timeUnits) * 100}
+                  colorScheme="blue"
+                  size="sm"
+                />
+                <Text mt={1}>{allocatedTime.study} units</Text>
+                <Text fontSize="sm" color="gray.600">
+                  Improves academic knowledge and GPA
+                </Text>
+              </Box>
+
+              <Box borderWidth="1px" borderRadius="md" p={4}>
+                <Text fontWeight="bold" mb={2}>
+                  Skill Development
+                </Text>
+                <Progress
+                  value={(allocatedTime.skillDevelopment / timeUnits) * 100}
+                  colorScheme="green"
+                  size="sm"
+                />
+                <Text mt={1}>{allocatedTime.skillDevelopment} units</Text>
+                <Text fontSize="sm" color="gray.600">
+                  Improves technical skills
+                </Text>
+              </Box>
+
+              <Box borderWidth="1px" borderRadius="md" p={4}>
+                <Text fontWeight="bold" mb={2}>
+                  Networking
+                </Text>
+                <Progress
+                  value={(allocatedTime.networking / timeUnits) * 100}
+                  colorScheme="purple"
+                  size="sm"
+                />
+                <Text mt={1}>{allocatedTime.networking} units</Text>
+                <Text fontSize="sm" color="gray.600">
+                  Builds connections and soft skills
+                </Text>
+              </Box>
+
+              <Box borderWidth="1px" borderRadius="md" p={4}>
+                <Text fontWeight="bold" mb={2}>
+                  Part-time Work
+                </Text>
+                <Progress
+                  value={(allocatedTime.partTimeWork / timeUnits) * 100}
+                  colorScheme="yellow"
+                  size="sm"
+                />
+                <Text mt={1}>{allocatedTime.partTimeWork} units</Text>
+                <Text fontSize="sm" color="gray.600">
+                  Earns money and practical experience
+                </Text>
+              </Box>
+
+              <Box borderWidth="1px" borderRadius="md" p={4}>
+                <Text fontWeight="bold" mb={2}>
+                  Extracurricular
+                </Text>
+                <Progress
+                  value={(allocatedTime.extracurricular / timeUnits) * 100}
+                  colorScheme="red"
+                  size="sm"
+                />
+                <Text mt={1}>{allocatedTime.extracurricular} units</Text>
+                <Text fontSize="sm" color="gray.600">
+                  Builds teamwork and leadership
+                </Text>
+              </Box>
+            </SimpleGrid>
+          </TabPanel>
+
+          {/* Skills Tab */}
+          <TabPanel>
+            <Heading size="md" mb={4}>
+              Skills Development
+            </Heading>
+
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+              {Object.entries(skills).map(([skill, value]) => (
+                <Box key={skill} borderWidth="1px" borderRadius="md" p={4}>
+                  <Text fontWeight="bold" mb={2} textTransform="capitalize">
+                    {skill.replace(/([A-Z])/g, " $1").trim()}
+                  </Text>
+                  <Progress
+                    value={value}
+                    max={100}
+                    colorScheme="blue"
+                    size="sm"
+                  />
+                  <Text mt={1}>{Math.round(value)}/100</Text>
+                </Box>
+              ))}
+            </SimpleGrid>
+          </TabPanel>
+
+          {/* History Tab */}
+          <TabPanel>
+            <Heading size="md" mb={4}>
+              Academic History
+            </Heading>
+
+            {semesterHistory.length === 0 ? (
+              <Alert status="info" borderRadius="md">
+                <AlertIcon />
+                <AlertDescription>
+                  No semester history available yet. Complete your first
+                  semester to see your record.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              semesterHistory.map((record, index) => (
+                <Box
+                  key={index}
+                  borderWidth="1px"
+                  borderRadius="md"
+                  p={4}
+                  mb={4}
+                >
+                  <Flex justify="space-between" align="center">
+                    <Heading size="sm">Semester {record.semester}</Heading>
+                    <Badge
+                      colorScheme={
+                        getGpaColor(record.gpa) === "green.500"
+                          ? "green"
+                          : getGpaColor(record.gpa) === "blue.500"
+                          ? "blue"
+                          : getGpaColor(record.gpa) === "yellow.500"
+                          ? "yellow"
+                          : "red"
+                      }
+                    >
+                      GPA: {record.gpa.toFixed(2)}
+                    </Badge>
+                  </Flex>
+
+                  <Divider my={3} />
+
+                  <Text fontWeight="bold" mb={2}>
+                    Courses:
+                  </Text>
+                  {record.courses.map((course, i) => (
+                    <Text key={i}>
+                      {course.name}:{" "}
+                      <Badge
+                        colorScheme={
+                          course.grade === "A"
+                            ? "green"
+                            : course.grade === "B"
+                            ? "blue"
+                            : course.grade === "C"
+                            ? "yellow"
+                            : course.grade === "Incomplete"
+                            ? "gray"
+                            : "red"
+                        }
+                      >
+                        {course.grade}
+                      </Badge>
+                    </Text>
+                  ))}
+                </Box>
+              ))
+            )}
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
+
+      <Flex justify="center" mt={8}>
+        <Button
+          colorScheme="green"
+          size="lg"
+          onClick={advanceSemester}
+          isDisabled={selectedCourses.length === 0}
+        >
+          Complete Semester & Advance
+        </Button>
+      </Flex>
+
+      {/* Select Courses Modal */}
+      <Modal
+        isOpen={isSelectCoursesOpen}
+        onClose={onCloseSelectCourses}
+        size="xl"
+      >
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Select Courses for Semester {semester}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Text mb={4}>
+              Select up to 4 courses for this semester. Choose wisely based on
+              your interests and skills.
+            </Text>
+
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+              {availableCourses.map((course) => (
+                <Box
+                  key={course.id}
+                  borderWidth="1px"
+                  borderRadius="md"
+                  p={3}
+                  cursor="pointer"
+                  onClick={() => toggleCourseSelection(course.id)}
+                  bg={
+                    selectedCourseIds.includes(course.id) ? "blue.50" : "white"
+                  }
+                  borderColor={
+                    selectedCourseIds.includes(course.id)
+                      ? "blue.500"
+                      : "gray.200"
+                  }
+                >
+                  <Flex justify="space-between" align="center">
+                    <Text fontWeight="bold">{course.name}</Text>
+                    <Badge
+                      colorScheme={
+                        course.difficulty > 3
+                          ? "red"
+                          : course.difficulty > 2
+                          ? "yellow"
+                          : "green"
+                      }
+                    >
+                      {Array(course.difficulty).fill("★").join("")}
+                    </Badge>
+                  </Flex>
+                  <Text>Credits: {course.credits}</Text>
+                </Box>
+              ))}
+            </SimpleGrid>
+
+            <Box mt={4} p={2} borderRadius="md" bg="blue.50">
+              <Text fontWeight="bold">
+                Selected: {selectedCourseIds.length}/4 courses
+              </Text>
+            </Box>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onCloseSelectCourses}>
+              Cancel
+            </Button>
+            <Button
+              colorScheme="blue"
+              onClick={saveSelectedCourses}
+              isDisabled={selectedCourseIds.length === 0}
+            >
+              Confirm Selection
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Allocate Time Modal */}
+      <Modal
+        isOpen={isAllocateTimeOpen}
+        onClose={onCloseAllocateTime}
+        size="lg"
+      >
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Allocate Time for Semester {semester}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Text mb={4}>
+              You have {timeUnits} time units to allocate across different
+              activities. Choose wisely to balance academic success with skill
+              development.
+            </Text>
+
+            <Box mb={6}>
+              <Flex justify="space-between" align="center" mb={1}>
+                <Text fontWeight="bold">
+                  Remaining Time Units: {timeRemaining}
+                </Text>
+                <Badge colorScheme={timeRemaining >= 0 ? "green" : "red"}>
+                  {timeRemaining >= 0 ? "Valid" : "Exceeds Limit"}
+                </Badge>
+              </Flex>
+              <Progress
+                value={(timeRemaining / timeUnits) * 100}
+                colorScheme={timeRemaining >= 0 ? "green" : "red"}
+                size="sm"
+              />
+            </Box>
+
+            <Stack spacing={6}>
+              <Box>
+                <Text mb={2}>Study: {tempTimeAllocation.study} units</Text>
+                <Slider
+                  min={0}
+                  max={timeUnits}
+                  step={1}
+                  value={tempTimeAllocation.study}
+                  onChange={(val) => handleTimeAllocationChange("study", val)}
+                  colorScheme="blue"
+                >
+                  <SliderTrack>
+                    <SliderFilledTrack />
+                  </SliderTrack>
+                  <SliderThumb boxSize={6} />
+                </Slider>
+              </Box>
+
+              <Box>
+                <Text mb={2}>
+                  Skill Development: {tempTimeAllocation.skillDevelopment} units
+                </Text>
+                <Slider
+                  min={0}
+                  max={timeUnits}
+                  step={1}
+                  value={tempTimeAllocation.skillDevelopment}
+                  onChange={(val) =>
+                    handleTimeAllocationChange("skillDevelopment", val)
+                  }
+                  colorScheme="green"
+                >
+                  <SliderTrack>
+                    <SliderFilledTrack />
+                  </SliderTrack>
+                  <SliderThumb boxSize={6} />
+                </Slider>
+              </Box>
+
+              <Box>
+                <Text mb={2}>
+                  Networking: {tempTimeAllocation.networking} units
+                </Text>
+                <Slider
+                  min={0}
+                  max={timeUnits}
+                  step={1}
+                  value={tempTimeAllocation.networking}
+                  onChange={(val) =>
+                    handleTimeAllocationChange("networking", val)
+                  }
+                  colorScheme="purple"
+                >
+                  <SliderTrack>
+                    <SliderFilledTrack />
+                  </SliderTrack>
+                  <SliderThumb boxSize={6} />
+                </Slider>
+              </Box>
+
+              <Box>
+                <Text mb={2}>
+                  Part-time Work: {tempTimeAllocation.partTimeWork} units
+                </Text>
+                <Slider
+                  min={0}
+                  max={timeUnits}
+                  step={1}
+                  value={tempTimeAllocation.partTimeWork}
+                  onChange={(val) =>
+                    handleTimeAllocationChange("partTimeWork", val)
+                  }
+                  colorScheme="yellow"
+                >
+                  <SliderTrack>
+                    <SliderFilledTrack />
+                  </SliderTrack>
+                  <SliderThumb boxSize={6} />
+                </Slider>
+              </Box>
+
+              <Box>
+                <Text mb={2}>
+                  Extracurricular: {tempTimeAllocation.extracurricular} units
+                </Text>
+                <Slider
+                  min={0}
+                  max={timeUnits}
+                  step={1}
+                  value={tempTimeAllocation.extracurricular}
+                  onChange={(val) =>
+                    handleTimeAllocationChange("extracurricular", val)
+                  }
+                  colorScheme="red"
+                >
+                  <SliderTrack>
+                    <SliderFilledTrack />
+                  </SliderTrack>
+                  <SliderThumb boxSize={6} />
+                </Slider>
+              </Box>
+            </Stack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onCloseAllocateTime}>
+              Cancel
+            </Button>
+            <Button
+              colorScheme="blue"
+              onClick={saveTimeAllocation}
+              isDisabled={timeRemaining < 0}
+            >
+              Confirm Allocation
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Random Event Modal */}
+      {activeEvent && (
+        <Modal isOpen={isEventOpen} onClose={onCloseEvent} size="md">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>{activeEvent.title}</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <Text mb={4}>{activeEvent.description}</Text>
+
+              <Stack spacing={3} mt={4}>
+                {activeEvent.options.map((option, index) => (
+                  <Button
+                    key={index}
+                    onClick={() => handleEventOption(index)}
+                    colorScheme="blue"
+                    variant={index === 0 ? "solid" : "outline"}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </Stack>
+            </ModalBody>
+            <ModalFooter />
+          </ModalContent>
+        </Modal>
+      )}
     </Box>
   );
-};
+}
 
 export default EducationPage;
